@@ -1,0 +1,5 @@
+/target/
+/dist/
+*.mp4
+*.log
+.DS_Store

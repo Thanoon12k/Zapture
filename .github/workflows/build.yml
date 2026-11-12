@@ -1,0 +1,46 @@
+name: Desktop builds
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-22.04, macos-14]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Linux build dependencies
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libx11-dev libxkbcommon-dev libwayland-dev libgl1-mesa-dev
+      - run: cargo test --locked
+      - run: cargo build --release --locked
+      - name: Package Windows
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force dist
+          Copy-Item target/release/zapture.exe dist/Zapture.exe
+          Copy-Item README.md,LICENSE,THIRD_PARTY.md dist/
+      - name: Package Linux
+        if: runner.os == 'Linux'
+        run: |
+          mkdir -p dist
+          cp target/release/zapture README.md LICENSE THIRD_PARTY.md dist/
+      - name: Package macOS app
+        if: runner.os == 'macOS'
+        run: |
+          mkdir -p dist/Zapture.app/Contents/MacOS
+          cp target/release/zapture dist/Zapture.app/Contents/MacOS/Zapture
+          cp packaging/macos/Info.plist dist/Zapture.app/Contents/
+          cp README.md LICENSE THIRD_PARTY.md dist/
+          codesign --force --deep --sign - dist/Zapture.app
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Zapture-${{ runner.os }}-${{ runner.arch }}-preview
+          path: dist/
