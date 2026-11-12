@@ -78,10 +78,12 @@ fn message_box(text: &str, flags: windows::Win32::UI::WindowsAndMessaging::MESSA
 }
 
 pub fn alert(text: &str) {
+    if crate::mcp::enabled() { crate::mcp::report_error(text); return; }
     message_box(text, MB_OK | MB_ICONWARNING | MB_TOPMOST);
 }
 
 pub fn info(text: &str) {
+    if crate::mcp::enabled() { eprintln!("Zapture: {text}"); return; }
     message_box(text, MB_OK | MB_ICONINFORMATION | MB_TOPMOST);
 }
 

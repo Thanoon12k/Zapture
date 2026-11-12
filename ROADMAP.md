@@ -7,6 +7,8 @@
 - [x] English default; optional startup; local-only operation.
 - [x] Experimental X11 and macOS capture adapters and simple floating UI.
 - [x] Desktop CI build definitions.
+- [x] Local stdio MCP tools for screenshot, start, stop and status.
+- [ ] Validate end-to-end capture using real MCP clients on each supported desktop.
 
 ## Required before claiming desktop completion
 - [ ] Test Windows 10/11 real screen, mic, loopback, both, pause/resume and display scaling.

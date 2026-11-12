@@ -74,6 +74,7 @@ impl Desktop {
         let logfile=std::fs::File::create(&log).map_err(|e|e.to_string())?;
         let child=Command::new("ffmpeg").args(args).arg(&path).stdin(Stdio::piped()).stdout(Stdio::null()).stderr(logfile)
             .spawn().map_err(|e|format!("FFmpeg is required for this platform preview: {e}"))?;
+        crate::mcp::set_recording_path(path.to_string_lossy().into_owned());
         self.session=Some(Session {child,path,log,since:Instant::now(),stopping:false});
         self.message="Starting capture…".into(); Ok(())
     }
@@ -130,9 +131,38 @@ fn take_shot()->Result<String,String> {
     let copied=guard.as_mut().unwrap().set_image(arboard::ImageData{width:w as usize,height:h as usize,bytes:std::borrow::Cow::Owned(img.into_raw())});
     match copied { Ok(())=>Ok(format!("Saved + copied: {}",path.display())),Err(e)=>Ok(format!("Saved: {}. Clipboard unavailable: {e}",path.display())) }
 }
+impl Desktop {
+    fn agent_call(&mut self,name:&str,args:&serde_json::Value)->Result<serde_json::Value,String>{
+        use serde_json::json;
+        match name {
+            "zapture_status"=>{self.poll();Ok(json!({"state":self.session.as_ref().map(|s|if s.stopping{"saving"}else{"recording"}).unwrap_or("idle"),"recording_path":crate::mcp::recording_path(),"output_folder":root(),"message":self.message,"platform":std::env::consts::OS,"limitations":"Experimental FFmpeg adapter. Wayland unsupported. macOS needs device indices/loopback configuration."}))},
+            "zapture_start_recording"=>{
+                if self.session.is_some(){return Err("A recording is active or saving".into());}
+                self.audio=crate::mcp::audio(args)?;self.start()?;self.agent_call("zapture_status",&json!({}))
+            },
+            "zapture_stop_recording"=>{self.stop();self.agent_call("zapture_status",&json!({}))},
+            "zapture_screenshot"=>{
+                if wayland(){return Err("Wayland screenshot portal not implemented".into());}
+                let path=output("Screenshots","png")?;
+                let result=if cfg!(target_os="macos"){
+                    Command::new("screencapture").arg("-x").arg(&path).stdin(Stdio::null()).stdout(Stdio::null()).output()
+                }else{
+                    Command::new("ffmpeg").args(["-hide_banner","-loglevel","error","-n","-f","x11grab","-i"])
+                        .arg(std::env::var("DISPLAY").map_err(|_|"No X11 display")?).args(["-frames:v","1"]).arg(&path).stdin(Stdio::null()).output()
+                }.map_err(|e|e.to_string())?;
+                if !result.status.success(){return Err(String::from_utf8_lossy(&result.stderr).to_string());}
+                crate::mcp::screenshot_result(&path,args.get("inline").and_then(|v|v.as_bool()).unwrap_or(true))
+            },
+            "__exit"=>{self.closing=true;self.stop();Ok(json!({"closing":true}))},
+            _=>Err("Unsupported agent command".into()),
+        }
+    }
+}
 impl eframe::App for Desktop {
     fn update(&mut self, ctx:&egui::Context,_:&mut eframe::Frame) {
         self.poll();
+        crate::mcp::drain(|name,args|self.agent_call(name,args));
+        if crate::mcp::enabled() {ctx.request_repaint_after(Duration::from_millis(200));}
         if ctx.input(|i|i.viewport().close_requested()) && (self.session.is_some() || self.shot_rx.is_some()) {
             ctx.send_viewport_cmd(egui::ViewportCommand::CancelClose);self.closing=true;self.stop();
         }

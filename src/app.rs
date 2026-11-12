@@ -749,3 +749,34 @@ pub fn act_quit() {
         State::Idle => unsafe { PostQuitMessage(0) },
     }
 }
+
+/// Agent commands run on the same UI thread as human controls.
+pub fn agent_call(name:&str,args:&serde_json::Value)->Result<serde_json::Value,String> {
+    use serde_json::json;
+    match name {
+        "zapture_status"=>Ok(json!({"state":format!("{:?}",cached_state()).to_lowercase(),"output_folder":util::captures_dir(),"recording_path":crate::mcp::recording_path(),"warning":crate::mcp::take_error(),"platform":"windows","capture":"current frame for recording; primary monitor for agent screenshots"})),
+        "zapture_start_recording"=>{
+            if cached_state()!=State::Idle {return Err("A recording is already active or saving".into());}
+            let _=crate::mcp::take_error();
+            act_set_audio(crate::mcp::audio(args)?);
+            set_visible(true);
+            act_toggle_record();
+            if cached_state()!=State::Recording {return Err(crate::mcp::take_error().unwrap_or_else(||"Recording did not start".into()));}
+            if let Some(path)=with(|a|a.session.as_ref().map(|s|util::videos_dir().join(&s.out_name))).flatten(){crate::mcp::set_recording_path(path.to_string_lossy().into_owned());}
+            agent_call("zapture_status",&json!({}))
+        },
+        "zapture_stop_recording"=>{act_stop();agent_call("zapture_status",&json!({}))},
+        "zapture_screenshot"=>{
+            use windows::Win32::UI::WindowsAndMessaging::{GetSystemMetrics,SM_CXSCREEN,SM_CYSCREEN};
+            let (w,h)=unsafe{(GetSystemMetrics(SM_CXSCREEN),GetSystemMetrics(SM_CYSCREEN))};
+            if w<=0 || h<=0 {return Err("No active primary display".into());}
+            let pixels=screen::snapshot(0,0,w,h,true)?;
+            let dir=util::screenshots_dir();std::fs::create_dir_all(&dir).map_err(|e|e.to_string())?;
+            let path=dir.join(format!("AGENT_{}.png",util::timestamp()));
+            screen::save_png(&path,w as u32,h as u32,&pixels)?;
+            crate::mcp::screenshot_result(&path,args.get("inline").and_then(|v|v.as_bool()).unwrap_or(true))
+        },
+        "__exit"=>{act_quit();Ok(json!({"closing":true}))},
+        _=>Err("Unsupported agent command".into()),
+    }
+}

@@ -766,6 +766,7 @@ unsafe extern "system" fn bar_proc(hwnd: HWND, msg: u32, wparam: WPARAM, lparam:
         }
         WM_TIMER => {
             match wparam.0 {
+                9 => crate::mcp::drain(app::agent_call),
                 TIMER_TICK => {
                     if let Some(s) = ui::snap() {
                         repaint_from(&s);

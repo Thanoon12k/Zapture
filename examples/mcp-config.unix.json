@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "zapture": {
+      "command": "/absolute/path/to/zapture",
+      "args": ["--mcp"]
+    }
+  }
+}

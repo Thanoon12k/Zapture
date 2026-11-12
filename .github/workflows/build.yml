@@ -26,19 +26,19 @@ jobs:
         run: |
           New-Item -ItemType Directory -Force dist
           Copy-Item target/release/zapture.exe dist/Zapture.exe
-          Copy-Item README.md,LICENSE,THIRD_PARTY.md dist/
+          Copy-Item README.md,LICENSE,THIRD_PARTY.md,MCP.md dist/
       - name: Package Linux
         if: runner.os == 'Linux'
         run: |
           mkdir -p dist
-          cp target/release/zapture README.md LICENSE THIRD_PARTY.md dist/
+          cp target/release/zapture README.md LICENSE THIRD_PARTY.md MCP.md dist/
       - name: Package macOS app
         if: runner.os == 'macOS'
         run: |
           mkdir -p dist/Zapture.app/Contents/MacOS
           cp target/release/zapture dist/Zapture.app/Contents/MacOS/Zapture
           cp packaging/macos/Info.plist dist/Zapture.app/Contents/
-          cp README.md LICENSE THIRD_PARTY.md dist/
+          cp README.md LICENSE THIRD_PARTY.md MCP.md dist/
           codesign --force --deep --sign - dist/Zapture.app
       - uses: actions/upload-artifact@v4
         with:

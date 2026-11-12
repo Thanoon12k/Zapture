@@ -8,6 +8,10 @@ description = "Minimal frame-based screen recorder: drag a frame over anything, 
 categories = ["multimedia::video"]
 keywords = ["screen-recorder", "screenshot", "capture"]
 
+[dependencies]
+serde_json = "1"
+base64 = "0.22"
+
 [build-dependencies]
 embed-resource = "2"
 

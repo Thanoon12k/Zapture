@@ -51,6 +51,10 @@ cargo build --release --locked
 
 GitHub Actions builds Windows x64, Linux x64 and macOS ARM64 preview artifacts. These are compile/test checks, not proof of successful real-device recording. All-platform native backends remain the project direction; see `ARCHITECTURE.md` and `ROADMAP.md`.
 
+## AI agents / MCP
+
+Run `Zapture.exe --mcp` (or `zapture --mcp` on Unix) to expose screenshot, start recording, stop recording and status tools to a local compatible AI client. See [MCP.md](MCP.md) for configuration and limitations. Normal double-click operation stays unchanged.
+
 ## Free distribution
 
 The Zapture source changes are MIT-licensed and the inherited Cadre MIT notice is preserved in `LICENSE`. You may use, modify, sell or distribute this source under those terms. Include the required copyright and license notices. Dependencies keep their own licenses; see `THIRD_PARTY.md`. Codec patents, bundled third-party binaries, app-store policies and signing requirements depend on the distribution method and jurisdiction; MIT is not a universal codec/distribution clearance.

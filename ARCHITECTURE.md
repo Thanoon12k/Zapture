@@ -7,6 +7,7 @@ Keep the product small: record, stop, screenshot, audio selection, open output f
 - `src/config.rs`: dependency-free settings, audio modes and hotkey values; unit-tested on desktop targets.
 - `src/app.rs` and `src/win/`: inherited native Windows event-driven UI, GDI capture, Media Foundation H.264/AAC, WASAPI microphone/loopback, PNG/clipboard. Platform bindings are gated with `cfg(windows)`.
 - `src/desktop.rs`: experimental macOS/Linux eframe UI and FFmpeg process adapter. Process arguments use `Command` directly; no interpolated shell. Stop requests graceful encoder finalization. The X11 clipboard owner is retained. Errors are surfaced, with FFmpeg log files.
+- `src/mcp.rs`: bounded newline JSON-RPC stdio server with a fixed capture-tool allowlist. Requests run on the native UI thread through a queue, keeping human controls and agent commands in one state machine.
 - `src/main.rs`: compile-time platform dispatch. Unsupported platforms do not silently fall back to fake capture.
 
 This is separation of platform code, not yet a common capture-engine interface. The next refactor should extract a small shared crate with SessionState, CaptureOptions, CaptureEvent, StoragePolicy and a CaptureBackend trait. Keep platform handles and permissions outside that crate. Do not force Windows' frame UI onto mobile.

@@ -151,6 +151,9 @@ pub fn run() {
         ));
     }
 
+    if crate::mcp::enabled() {
+        unsafe { windows::Win32::UI::WindowsAndMessaging::SetTimer(bar, 9, 200, None); }
+    }
     ui::bar::place(bar, frame);
     ui::refresh_all();
 

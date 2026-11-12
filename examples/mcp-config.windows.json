@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "zapture": {
+      "command": "C:\\Apps\\Zapture\\Zapture.exe",
+      "args": ["--mcp"]
+    }
+  }
+}
