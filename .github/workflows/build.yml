@@ -3,6 +3,11 @@ on:
   push:
   pull_request:
   workflow_dispatch:
+    inputs:
+      publish_release:
+        description: Publish the version in Cargo.toml as a prerelease
+        type: boolean
+        default: false
 permissions:
   contents: read
 jobs:
@@ -15,32 +20,54 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
       - name: Linux build dependencies
         if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y libx11-dev libxkbcommon-dev libwayland-dev libgl1-mesa-dev
       - run: cargo test --locked
       - run: cargo build --release --locked
-      - name: Package Windows
-        if: runner.os == 'Windows'
-        shell: pwsh
-        run: |
-          New-Item -ItemType Directory -Force dist
-          Copy-Item target/release/zapture.exe dist/Zapture.exe
-          Copy-Item README.md,LICENSE,THIRD_PARTY.md,MCP.md dist/
-      - name: Package Linux
-        if: runner.os == 'Linux'
-        run: |
-          mkdir -p dist
-          cp target/release/zapture README.md LICENSE THIRD_PARTY.md MCP.md dist/
-      - name: Package macOS app
-        if: runner.os == 'macOS'
-        run: |
-          mkdir -p dist/Zapture.app/Contents/MacOS
-          cp target/release/zapture dist/Zapture.app/Contents/MacOS/Zapture
-          cp packaging/macos/Info.plist dist/Zapture.app/Contents/
-          cp README.md LICENSE THIRD_PARTY.md MCP.md dist/
-          codesign --force --deep --sign - dist/Zapture.app
+      - name: Package with documentation and licenses
+        run: python scripts/package.py
       - uses: actions/upload-artifact@v4
         with:
           name: Zapture-${{ runner.os }}-${{ runner.arch }}-preview
-          path: dist/
+          path: |
+            dist/*.zip
+            dist/*.tar.gz
+            dist/*.sha256
+          if-no-files-found: error
+  release:
+    needs: build
+    if: github.ref == 'refs/heads/main' && ((github.event_name == 'push' && contains(github.event.head_commit.message, '[release]')) || (github.event_name == 'workflow_dispatch' && inputs.publish_release))
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/download-artifact@v4
+        with:
+          path: release-assets
+          merge-multiple: true
+      - name: Publish first prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          VERSION=$(python -c 'import tomllib; print(tomllib.load(open("Cargo.toml", "rb"))["package"]["version"])')
+          TAG="v$VERSION"
+          NOTES="docs/release-notes-$TAG.md"
+          test -f "$NOTES"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "Release already exists; refusing to overwrite it."
+            exit 1
+          fi
+          cd release-assets
+          cat *.sha256 > SHA256SUMS.txt
+          sha256sum -c SHA256SUMS.txt
+          cd ..
+          gh release create "$TAG" release-assets/*.zip release-assets/*.tar.gz release-assets/SHA256SUMS.txt --target "$GITHUB_SHA" --prerelease --title "Zapture $TAG — first preview" --notes-file "$NOTES"

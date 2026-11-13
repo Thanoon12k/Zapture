@@ -1,5 +1,7 @@
-/target/
+/target
 /dist/
 *.mp4
 *.log
 .DS_Store
+
+__pycache__/

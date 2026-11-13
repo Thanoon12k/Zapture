@@ -2,7 +2,7 @@
 
 Simple, local screen capture. **Record. Stop. Screenshot.** English UI, no account, no subscription, no advertising, no uploads.
 
-**0.1.0 preview — not yet a finished all-platform release.** Windows has a native Rust/Win32 implementation. Linux/X11 and macOS have experimental Rust desktop adapters requiring FFmpeg. Wayland, Android and iOS capture are not implemented. No CPU/RAM performance measurements or real-device Windows/macOS capture tests have been performed for this fork yet.
+**0.1.0-alpha.1 preview — not yet a finished all-platform release.** Windows has a native Rust/Win32 implementation. Linux/X11 and macOS have experimental Rust desktop adapters requiring FFmpeg. Wayland, Android and iOS capture are not implemented. No CPU/RAM performance measurements or real-device Windows/macOS capture tests have been performed for this fork yet.
 
 ## Current support
 
@@ -13,6 +13,11 @@ Simple, local screen capture. **Record. Stop. Screenshot.** English UI, no accou
 | Linux Wayland | UI can launch; capture explicitly blocked | Portal + PipeWire backend is planned. Xwayland is not treated as whole-desktop capture. |
 | macOS | Experimental floating panel, AVFoundation MP4, native interactive screenshot, PNG save + copy | FFmpeg, screen/microphone permissions and device indices. Computer audio currently needs a configured loopback device. No global hotkeys/pause yet. Not notarized. |
 | Android / iOS | Architecture roadmap only | MediaProjection / ReplayKit adapters and mobile UI are not implemented. |
+
+## Downloads and docs
+
+- [Releases](https://github.com/Thanoon12k/Zapture/releases): versioned Windows, Linux and macOS packages, published only after all matrix builds and tests succeed.
+- [Documentation](docs/README.md): quick start, MCP, build guide, platform support and roadmap.
 
 ## Windows quick start
 
@@ -49,11 +54,11 @@ cargo test --locked
 cargo build --release --locked
 ```
 
-GitHub Actions builds Windows x64, Linux x64 and macOS ARM64 preview artifacts. These are compile/test checks, not proof of successful real-device recording. All-platform native backends remain the project direction; see `ARCHITECTURE.md` and `ROADMAP.md`.
+GitHub Actions builds Windows x64, Linux x64 and macOS ARM64 preview artifacts. These are compile/test checks, not proof of successful real-device recording. All-platform native backends remain the project direction; see `docs/architecture.md` and `docs/roadmap.md`.
 
 ## AI agents / MCP
 
-Run `Zapture.exe --mcp` (or `zapture --mcp` on Unix) to expose screenshot, start recording, stop recording and status tools to a local compatible AI client. See [MCP.md](MCP.md) for configuration and limitations. Normal double-click operation stays unchanged.
+Run `Zapture.exe --mcp` (or `zapture --mcp` on Unix) to expose screenshot, start recording, stop recording and status tools to a local compatible AI client. See [MCP guide](docs/mcp.md) for configuration and limitations. Normal double-click operation stays unchanged.
 
 ## Free distribution
 
