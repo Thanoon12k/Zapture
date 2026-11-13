@@ -67,7 +67,7 @@ jobs:
             exit 1
           fi
           cd release-assets
-          cat *.sha256 > SHA256SUMS.txt
+          cat *.sha256 | tr -d '\r' > SHA256SUMS.txt
           sha256sum -c SHA256SUMS.txt
           cd ..
           gh release create "$TAG" release-assets/*.zip release-assets/*.tar.gz release-assets/SHA256SUMS.txt --target "$GITHUB_SHA" --prerelease --title "Zapture $TAG — first preview" --notes-file "$NOTES"
