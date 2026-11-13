@@ -386,6 +386,7 @@ pub fn on_encoder_done(err: Option<String>) {
         None => {
             if let Some(n) = name {
                 ui::bar::toast(&format!("{}Recordings\\{n}", t(lang, Msg::SavedPrefix)));
+                util::reveal_capture(&util::videos_dir().join(&n), false);
             }
         }
         Some(e) => util::alert(&format!("{}\n{e}", t(lang, Msg::ErrRecFailed))),
@@ -442,7 +443,7 @@ pub fn act_shot() {
             let notify = encoder::HwndSend::from(bar_hwnd);
             std::thread::spawn(move || {
                 let (ok, text) = match screen::save_png(&path, ow, oh, &pixels) {
-                    Ok(()) => (1usize, name),
+                    Ok(()) => (1usize, path.to_string_lossy().into_owned()),
                     Err(e) => (0usize, e),
                 };
                 let boxed = Box::into_raw(Box::new(text));
@@ -458,7 +459,8 @@ pub fn act_shot() {
 pub fn on_shot_done(ok: bool, text: String) {
     let lang = lang();
     if ok {
-        ui::bar::toast(&format!("{}Screenshots\\{text}", t(lang, Msg::SavedPrefix)));
+        ui::bar::toast("Screenshot saved and copied.");
+        util::reveal_capture(std::path::Path::new(&text), true);
     } else {
         util::alert(&format!("{}\n{text}", t(lang, Msg::ErrShotFailed)));
     }

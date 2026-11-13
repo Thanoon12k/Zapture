@@ -35,6 +35,15 @@ use crate::win::{
     autostart, util, HK_RECORD, HK_SHOT, HK_SNIP, HK_STOP, MSG_ENC_DONE, MSG_SHOT_DONE, MSG_TRAY,
 };
 
+static BAR_SCALE: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(100);
+static RECORDING_DOT: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(true);
+pub fn set_preferences(scale:u32,dot:bool){BAR_SCALE.store(scale.clamp(75,150),Ordering::Relaxed);RECORDING_DOT.store(dot,Ordering::Relaxed);}
+pub fn dot_mode()->bool{RECORDING_DOT.load(Ordering::Relaxed) && matches!(app::cached_state(),State::Recording|State::Paused)}
+fn control_scale(hwnd:HWND)->f32 { ui::scale_of(hwnd)*BAR_SCALE.load(Ordering::Relaxed) as f32/100.0 }
+thread_local! {
+    static DOT_POSITION:RefCell<Option<(i32,i32)>>=const{RefCell::new(None)};
+    static DOT_DRAG:RefCell<Option<(i32,i32,i32,i32,bool)>>=const{RefCell::new(None)};
+}
 const WM_MOUSELEAVE: u32 = 0x02A3;
 
 const TIMER_TICK: usize = 1;
@@ -220,8 +229,20 @@ pub fn create() -> Result<HWND, String> {
 /// Dock the bar to the frame: centered below the region, else above it, else
 /// tucked inside its bottom-right corner (where capture exclusion hides it).
 pub fn place(bar: HWND, frame: HWND) {
+    if dot_mode() {
+        let side=ui::px(48,control_scale(bar));
+        let mut mi=MONITORINFO{cbSize:std::mem::size_of::<MONITORINFO>() as u32,..Default::default()};
+        unsafe{let _=GetMonitorInfoW(MonitorFromWindow(frame,MONITOR_DEFAULTTONEAREST),&mut mi);}
+        let (mut x,mut y)=DOT_POSITION.with(|p|p.borrow().unwrap_or((mi.rcWork.right-side-20,mi.rcWork.top+20)));
+        unsafe {let monitor=windows::Win32::Graphics::Gdi::MonitorFromPoint(POINT{x,y},MONITOR_DEFAULTTONEAREST);let _=GetMonitorInfoW(monitor,&mut mi);}
+        x=x.clamp(mi.rcWork.left,(mi.rcWork.right-side).max(mi.rcWork.left));
+        y=y.clamp(mi.rcWork.top,(mi.rcWork.bottom-side).max(mi.rcWork.top));
+        DOT_POSITION.with(|p|*p.borrow_mut()=Some((x,y)));
+        unsafe{let _=SetWindowPos(bar,HWND::default(),x,y,side,side,SWP_NOZORDER|SWP_NOACTIVATE);}
+        return;
+    }
     let (cl, ct, cw, ch) = super::frame::capture_rect(frame);
-    let k = ui::scale_of(bar);
+    let k = control_scale(bar);
     let l = layout(k);
     let gap = ui::px(12, k);
 
@@ -381,7 +402,17 @@ fn icon(canvas: &Canvas, btn: Btn, r: &RECT, snap: &Snap, k: f32) {
 
 pub fn repaint_from(snap: &Snap) {
     let bar = snap.bar;
-    let k = ui::scale_of(bar);
+    let k = control_scale(bar);
+    if dot_mode() {
+        let side=ui::px(48,k);
+        if let Some(canvas)=Canvas::new(side,side) {
+            let center=side as f32/2.0;
+            canvas.fill_circle(center,center,center-1.0,argb(240,28,29,33));
+            canvas.fill_circle(center,center,center*0.66,if snap.state==State::Paused{AMBER}else{RED});
+            canvas.present(bar);
+        }
+        return;
+    }
     let l = layout(k);
     let Some(canvas) = Canvas::new(l.w, l.h) else { return };
     let s = |v: i32| ui::px(v, k) as f32;
@@ -477,7 +508,7 @@ fn tip_text(btn: Btn, snap: &Snap) -> String {
         },
         Btn::Stop => format!("{}  ·  {}", t(lang, Msg::TipStop), snap.hk_stop),
         Btn::Shot => format!("{}  ·  {}", t(lang, Msg::TipShot), snap.hk_shot),
-        Btn::Snap => "Select screenshot area (Alt+A)".to_string(),
+        Btn::Snap => format!("Select screenshot area ({})",snap.hk_snip),
         Btn::Camera => t(lang, Msg::TipCamera).to_string(),
         Btn::Audio => {
             if snap.state != State::Idle {
@@ -491,7 +522,7 @@ fn tip_text(btn: Btn, snap: &Snap) -> String {
 }
 
 fn hit(bar: HWND, x: i32, y: i32) -> Option<Btn> {
-    let l = layout(ui::scale_of(bar));
+    let l = layout(control_scale(bar));
     l.btns.iter().find(|(_, r)| in_rect(r, x, y)).map(|(b, _)| *b)
 }
 
@@ -597,16 +628,7 @@ fn dispatch(cmd: usize) {
                 ShellExecuteW(None, w!("open"), PCWSTR(dir_w.as_ptr()), PCWSTR::null(), PCWSTR::null(), SW_SHOWNORMAL);
             }
         }
-        MENU_CONFIG => {
-            let path = util::config_path();
-            if !path.exists() {
-                app::with(|a| a.cfg.save(&path).ok());
-            }
-            let path_w = util::wide(&path.to_string_lossy());
-            unsafe {
-                ShellExecuteW(None, w!("open"), w!("notepad.exe"), PCWSTR(path_w.as_ptr()), PCWSTR::null(), SW_SHOWNORMAL);
-            }
-        }
+        MENU_CONFIG => ui::settings::open(),
         MENU_HOTKEYS => {
             if let Some(s) = ui::snap() {
                 let lang = s.lang;
@@ -664,7 +686,7 @@ fn tray_menu(bar: HWND) {
         let _ = AppendMenuW(menu, MF_SEPARATOR, 0, PCWSTR::null());
         append(menu, MF_STRING, MENU_SHOWHIDE, "Show / hide floating bar");
         append(menu, MF_STRING, MENU_FOLDER, "Open captures folder");
-        append(menu, MF_STRING, MENU_CONFIG, "Settings (FPS / hotkeys)");
+        append(menu, MF_STRING, MENU_CONFIG, "Settings...");
         append(menu, check(autostart::is_enabled()), MENU_AUTOSTART, "Start with Windows");
         append(menu, MF_STRING, MENU_ABOUT, "About Zapture");
         append(menu, MF_STRING, MENU_QUIT, "Exit");
@@ -673,6 +695,34 @@ fn tray_menu(bar: HWND) {
 }
 
 unsafe extern "system" fn bar_proc(hwnd: HWND, msg: u32, wparam: WPARAM, lparam: LPARAM) -> LRESULT {
+    if dot_mode() {
+        match msg {
+            WM_LBUTTONDOWN=>{
+                let mut cursor=POINT::default();let mut rect=RECT::default();
+                let _=GetCursorPos(&mut cursor);let _=GetWindowRect(hwnd,&mut rect);
+                DOT_DRAG.with(|d|*d.borrow_mut()=Some((cursor.x,cursor.y,rect.left,rect.top,false)));
+                SetCapture(hwnd);tip::hide();return LRESULT(0);
+            },
+            WM_MOUSEMOVE=>{
+                DOT_DRAG.with(|d|{
+                    let mut d=d.borrow_mut();if let Some((cx,cy,x,y,moved))=d.as_mut(){
+                        let mut cur=POINT::default();let _=GetCursorPos(&mut cur);
+                        let dx=cur.x-*cx;let dy=cur.y-*cy;
+                        *moved|=dx.abs()>4 || dy.abs()>4;
+                        if *moved {let pos=(*x+dx,*y+dy);DOT_POSITION.with(|p|*p.borrow_mut()=Some(pos));let _=SetWindowPos(hwnd,HWND::default(),pos.0,pos.1,0,0,SWP_NOZORDER|SWP_NOACTIVATE|windows::Win32::UI::WindowsAndMessaging::SWP_NOSIZE);}
+                    }
+                });return LRESULT(0);
+            },
+            WM_LBUTTONUP=>{
+                let moved=DOT_DRAG.with(|d|d.borrow_mut().take().map(|d|d.4));let _=ReleaseCapture();
+                if moved==Some(false){tray_menu(hwnd);}return LRESULT(0);
+            },
+            WM_RBUTTONUP=>{tray_menu(hwnd);return LRESULT(0);},
+            WM_MOUSELEAVE=>return LRESULT(0),
+            _=>{}
+        }
+    }
+    if msg==windows::Win32::UI::WindowsAndMessaging::WM_CAPTURECHANGED {DOT_DRAG.with(|d|*d.borrow_mut()=None);}
     match msg {
         WM_MOUSEMOVE => {
             let (x, y) = (util::loword_i(lparam.0), util::hiword_i(lparam.0));
@@ -776,7 +826,7 @@ unsafe extern "system" fn bar_proc(hwnd: HWND, msg: u32, wparam: WPARAM, lparam:
                     let _ = KillTimer(hwnd, TIMER_TIP);
                     let hover = BAR.with(|b| b.borrow().hover);
                     if let (Some(btn), Some(s)) = (hover, ui::snap()) {
-                        let l = layout(ui::scale_of(hwnd));
+                        let l = layout(control_scale(hwnd));
                         if let Some((_, r)) = l.btns.iter().find(|(b, _)| *b == btn) {
                             let mut wr = RECT::default();
                             let _ = GetWindowRect(hwnd, &mut wr);
@@ -898,7 +948,7 @@ mod tip {
     /// Show `text` centered at `cx`, just above `top_y`.
     pub fn show(text: &str, cx: i32, top_y: i32, auto_hide_ms: Option<u32>) {
         let Some(hwnd) = window() else { return };
-        let k = ui::scale_of(hwnd);
+        let k = control_scale(hwnd);
         let s = |v: i32| ui::px(v, k);
 
         let Some(probe) = Canvas::new(4, 4) else { return };

@@ -2,7 +2,7 @@
 
 Simple, local screen capture. **Record. Stop. Screenshot.** English UI, no account, no subscription, no advertising, no uploads.
 
-**0.1.0-alpha.1 preview — not yet a finished all-platform release.** Windows has a native Rust/Win32 implementation. Linux/X11 and macOS have experimental Rust desktop adapters requiring FFmpeg. Wayland, Android and iOS capture are not implemented. No CPU/RAM performance measurements or real-device Windows/macOS capture tests have been performed for this fork yet.
+**0.1.0-alpha.2 preview — not yet a finished all-platform release.** Windows has a native Rust/Win32 implementation. Linux/X11 and macOS have experimental Rust desktop adapters requiring FFmpeg. Wayland, Android and iOS capture are not implemented. The first Windows preview was reported working by a user. New settings/dot behavior still needs real-device validation; CPU/RAM benchmarks and macOS capture validation are pending.
 
 ## Current support
 
@@ -55,6 +55,10 @@ cargo build --release --locked
 ```
 
 GitHub Actions builds Windows x64, Linux x64 and macOS ARM64 preview artifacts. These are compile/test checks, not proof of successful real-device recording. All-platform native backends remain the project direction; see `docs/architecture.md` and `docs/roadmap.md`.
+
+## Windows settings
+
+Choose **Settings...** from the floating bar menu or tray menu. Configure the capture folder, keyboard shortcuts, video bitrate/FPS, control size, recording-dot mode, and automatic folder opening after saved screenshots/recordings. See [Settings](docs/settings.md).
 
 ## AI agents / MCP
 

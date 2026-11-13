@@ -9,6 +9,10 @@ Run `Zapture.exe`. Move/resize the frame or choose Capture full monitor from the
 Recordings and screenshots: `%USERPROFILE%\Videos\Zapture\Recordings` and `Screenshots`.
 Settings: `%LOCALAPPDATA%\Zapture\settings.toml`.
 
+## Settings on Windows
+
+Open **Settings...** from the tray or bar menu while idle. Set a destination, quality/FPS, shortcuts, size and whether the control shrinks to a red dot during recording. A click on the dot opens controls; drag it to reposition. The two **Open folder...** switches reveal saved screenshots/recordings in Explorer, with the new file selected. Details: [Settings](settings.md).
+
 ## Linux X11
 
 Install FFmpeg with x11grab, pulse, libx264 and AAC, and `pactl` for automatic computer-audio source selection. Run the extracted `zapture` executable in an X11 desktop session. Use Record, Stop, Screenshot and the Sound selector. Wayland capture is not implemented; the app reports this explicitly.

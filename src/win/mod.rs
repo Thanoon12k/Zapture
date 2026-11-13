@@ -98,6 +98,8 @@ pub fn run() {
     }
 
     let cfg = Config::load(&util::config_path());
+    util::set_output_dir(&cfg.output_dir);
+    ui::bar::set_preferences(cfg.bar_scale, cfg.recording_dot);
     let lang = match cfg.language {
         LangPref::En => Lang::En,
         LangPref::Zh => Lang::Zh,
@@ -160,6 +162,7 @@ pub fn run() {
     let mut msg = MSG::default();
     unsafe {
         while GetMessageW(&mut msg, None, 0, 0).as_bool() {
+            if let Some(h)=ui::settings::window() { if windows::Win32::UI::WindowsAndMessaging::IsDialogMessageW(h,&msg).as_bool() {continue;} }
             let _ = TranslateMessage(&msg);
             DispatchMessageW(&msg);
         }
@@ -175,4 +178,16 @@ pub fn run() {
     });
     ui::cam_win::close();
     ui::paint::shutdown();
+}
+
+pub fn rebind_hotkeys(bar: windows::Win32::Foundation::HWND, next: &Config, previous: &Config) -> Result<(),String> {
+    use windows::Win32::UI::Input::KeyboardAndMouse::UnregisterHotKey;
+    let keys=[next.hk_record,next.hk_stop,next.hk_shot,next.hk_snip];
+    for i in 0..keys.len() { if keys[..i].contains(&keys[i]) { return Err("Each shortcut must be different.".into()); } }
+    for id in [HK_RECORD,HK_STOP,HK_SHOT,HK_SNIP] {unsafe {let _=UnregisterHotKey(bar,id);}}
+    let failed=register_hotkeys(bar,next);
+    if failed.is_empty() {return Ok(());}
+    for id in [HK_RECORD,HK_STOP,HK_SHOT,HK_SNIP] {unsafe {let _=UnregisterHotKey(bar,id);}}
+    let restored=register_hotkeys(bar,previous);
+    Err(format!("Shortcut unavailable: {}. Previous shortcuts restored.{}",failed.join(", "), if restored.is_empty(){String::new()}else{format!(" Could not restore: {}",restored.join(", "))}))
 }

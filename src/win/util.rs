@@ -47,7 +47,13 @@ pub fn exe_dir() -> PathBuf {
         .unwrap_or_else(|| PathBuf::from("."))
 }
 
+static OUTPUT_DIR: std::sync::RwLock<Option<PathBuf>> = std::sync::RwLock::new(None);
+pub fn set_output_dir(path: &str) {
+    if let Ok(mut p)=OUTPUT_DIR.write() { *p=(!path.is_empty()).then(||PathBuf::from(path)); }
+}
 pub fn captures_dir() -> PathBuf {
+    if let Ok(p)=OUTPUT_DIR.read() { if let Some(p)=p.as_ref() { return p.clone(); } }
+
     std::env::var_os("USERPROFILE").map(PathBuf::from)
         .unwrap_or_else(exe_dir).join("Videos").join("Zapture")
 }
@@ -93,4 +99,13 @@ pub fn loword_i(l: isize) -> i32 {
 
 pub fn hiword_i(l: isize) -> i32 {
     ((l >> 16) & 0xFFFF) as u16 as i16 as i32
+}
+
+/// Reveal only completed human captures. MCP never opens Explorer automatically.
+pub fn reveal_capture(path: &std::path::Path, screenshot: bool) {
+    if crate::mcp::enabled() || !path.is_file() { return; }
+    let enabled=crate::app::with(|a|if screenshot {a.cfg.open_shot_folder} else {a.cfg.open_record_folder}).unwrap_or(false);
+    if enabled {
+        let _=std::process::Command::new("explorer.exe").arg("/select,").arg(path).spawn();
+    }
 }

@@ -259,6 +259,12 @@ impl CaptionEdge {
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Config {
+    pub output_dir: String,
+    pub open_shot_folder: bool,
+    pub open_record_folder: bool,
+    pub bar_scale: u32,
+    pub recording_dot: bool,
+
     pub fps: u32,
     /// Video bitrate in kbit/s; 0 selects an automatic value from region size and fps.
     pub bitrate_kbps: u32,
@@ -298,6 +304,11 @@ pub struct Config {
 impl Default for Config {
     fn default() -> Self {
         Config {
+            output_dir: String::new(),
+            open_shot_folder: true,
+            open_record_folder: true,
+            bar_scale: 100,
+            recording_dot: true,
             fps: 30,
             bitrate_kbps: 0,
             audio: AudioSource::System,
@@ -368,6 +379,11 @@ impl Config {
             let Some((k, v)) = line.split_once('=') else { continue };
             let (k, v) = (k.trim(), v.trim());
             match k {
+                "output_dir" => c.output_dir = unquote(v).to_string(),
+                "open_shot_folder" => if let Some(b)=parse_bool(v) { c.open_shot_folder=b; },
+                "open_record_folder" => if let Some(b)=parse_bool(v) { c.open_record_folder=b; },
+                "recording_dot" => if let Some(b)=parse_bool(v) { c.recording_dot=b; },
+                "bar_scale" => if let Ok(n)=v.parse::<u32>() { c.bar_scale=n.clamp(75,150); },
                 "fps" => {
                     if let Ok(n) = v.parse() {
                         c.fps = n;
@@ -496,7 +512,8 @@ impl Config {
     }
 
     pub fn render(&self) -> String {
-        let mut out = String::with_capacity(1024);
+        let mut out = String::with_capacity(1536);
+        out.push_str(&format!("output_dir = \"{}\"\nopen_shot_folder = {}\nopen_record_folder = {}\nbar_scale = {}\nrecording_dot = {}\n", self.output_dir, self.open_shot_folder, self.open_record_folder, self.bar_scale, self.recording_dot));
         out.push_str("# Cadre settings. Edited by hand or rewritten by the app on exit.\n");
         out.push_str("#\n");
         out.push_str("# Hotkeys combine Ctrl / Shift / Alt / Win with '+', ending in a key:\n");
@@ -569,13 +586,34 @@ impl Config {
     }
 
     pub fn save(&self, path: &Path) -> std::io::Result<()> {
-        std::fs::write(path, self.render())
+        let temp=path.with_extension(format!("{}.tmp",std::process::id()));
+        let result=(|| {std::fs::write(&temp,self.render())?;std::fs::rename(&temp,path)})();
+        if result.is_err(){let _=std::fs::remove_file(&temp);}
+        result
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn user_settings_roundtrip_unicode_path() {
+        let mut cfg=Config::default();
+        cfg.output_dir=r"D:\Captures #1\تصوير".into();
+        cfg.bar_scale=125;cfg.recording_dot=false;
+        cfg.open_shot_folder=false;cfg.open_record_folder=false;
+        cfg.hk_record=parse_hotkey("Ctrl+Shift+R").unwrap();
+        cfg.bitrate_kbps=12000;
+        assert_eq!(Config::parse(&cfg.render()),cfg);
+    }
+    #[test]
+    fn legacy_settings_gain_new_defaults_and_scale_is_bounded() {
+        let cfg=Config::parse("fps = 24\nbar_scale = 999\n");
+        assert_eq!(cfg.fps,24);assert_eq!(cfg.bar_scale,150);
+        assert!(cfg.output_dir.is_empty());assert!(cfg.recording_dot);
+        assert!(cfg.open_shot_folder && cfg.open_record_folder);
+    }
 
     #[test]
     fn defaults_roundtrip() {

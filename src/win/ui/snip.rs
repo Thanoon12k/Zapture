@@ -709,7 +709,7 @@ fn finish(h: HWND, save: bool) {
             let _ = std::fs::create_dir_all(&dir);
             let path = dir.join(format!("SHOT_{}.png", util::timestamp()));
             msg = match screen::save_png(&path, bw as u32, bh as u32, &buf) {
-                Ok(()) => Msg::SnipSaved,
+                Ok(()) => { util::reveal_capture(&path, true); Msg::SnipSaved },
                 Err(_) => Msg::ErrShotFailed,
             };
         }

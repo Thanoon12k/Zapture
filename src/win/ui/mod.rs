@@ -2,6 +2,7 @@
 //! both layered, topmost, and excluded from capture where the OS allows.
 
 pub mod bar;
+pub mod settings;
 pub mod cam_win;
 pub mod caption_win;
 pub mod export_win;
@@ -25,6 +26,7 @@ use crate::win::tray;
 /// Everything the painters need, snapshotted in one borrow of the app cell.
 pub struct Snap {
     pub state: State,
+    pub visible: bool,
     pub audio: AudioSource,
     pub lang: Lang,
     pub elapsed: String,
@@ -42,6 +44,7 @@ pub fn snap() -> Option<Snap> {
         let (_, _, w, h) = frame::capture_rect(a.frame);
         Snap {
             state: a.state,
+            visible: a.visible,
             audio: a.audio,
             lang: a.lang,
             elapsed: a.elapsed_text(),
@@ -58,6 +61,10 @@ pub fn snap() -> Option<Snap> {
 
 pub fn refresh_all() {
     if let Some(s) = snap() {
+        unsafe {
+            use windows::Win32::UI::WindowsAndMessaging::{ShowWindow,SW_HIDE,SW_SHOWNOACTIVATE};
+            let _=ShowWindow(s.frame,if s.visible && !bar::dot_mode(){SW_SHOWNOACTIVATE}else{SW_HIDE});
+        }
         frame::repaint(s.frame);
         bar::place(s.bar, s.frame);
         bar::repaint_from(&s);
