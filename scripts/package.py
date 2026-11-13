@@ -62,7 +62,7 @@ for package in metadata["packages"]:
 (licenses / "inventory.json").write_text(json.dumps(inventory, indent=2) + "\n")
 if SYSTEM == "Windows":
     archive = DIST / f"{NAME}.zip"
-    with zipfile.ZipFile(archive, "w", zipfile.ZIP_DEFLATED) as z:
+    with zipfile.ZipFile(archive, "w", zipfile.ZIP_DEFLATED, strict_timestamps=False) as z:
         for file in STAGE.rglob("*"):
             if file.is_file():
                 z.write(file, f"{NAME}/{file.relative_to(STAGE).as_posix()}")
