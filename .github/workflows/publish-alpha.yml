@@ -18,14 +18,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: 72c2d3350bc8e28925755d754bd74bd413ef98e6
+          fetch-depth: 0
       - name: Verify source commit and successful platform builds
         shell: bash
         run: |
           test "$(gh api repos/$GH_REPO/actions/runs/$SOURCE_RUN_ID --jq .head_sha)" = "$SOURCE_SHA"
+          git diff --name-only "$SOURCE_SHA" "$GITHUB_SHA" > /tmp/changed.txt
           gh api repos/$GH_REPO/actions/runs/$SOURCE_RUN_ID/jobs > /tmp/jobs.json
           python3 - <<'PY'
           import json
+          assert all(p.startswith(".github/workflows/") for p in open("/tmp/changed.txt").read().splitlines()), "Application source differs from tested build"
           jobs = [j for j in json.load(open('/tmp/jobs.json'))['jobs'] if j['name'].startswith('build (')]
           assert len(jobs) == 3
           assert all(j['status'] == 'completed' and j['conclusion'] == 'success' for j in jobs)
@@ -48,4 +50,4 @@ jobs:
           cat *.sha256 | tr -d '\r' > SHA256SUMS.txt
           sha256sum -c SHA256SUMS.txt
           cd ..
-          gh release create "$TAG" release-assets/*.zip release-assets/*.tar.gz release-assets/SHA256SUMS.txt --target "$SOURCE_SHA" --prerelease --title "Zapture $TAG — first preview" --notes-file "docs/release-notes-$TAG.md"
+          gh release create "$TAG" release-assets/*.zip release-assets/*.tar.gz release-assets/SHA256SUMS.txt --target "$GITHUB_SHA" --prerelease --title "Zapture $TAG — first preview" --notes-file "docs/release-notes-$TAG.md"
