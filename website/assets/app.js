@@ -7,8 +7,6 @@ $('record').addEventListener('click',()=>{running=true;paused=false;elapsed=0;re
 $('copy-config').addEventListener('click',async()=>{try{await navigator.clipboard.writeText($('mcp-code').textContent);$('copy-config').textContent='Copied!';setTimeout(()=>$('copy-config').textContent='Copy config',2200)}catch{const range=document.createRange();range.selectNodeContents($('mcp-code'));const selection=window.getSelection();selection.removeAllRanges();selection.addRange(range);$('copy-config').textContent='Select & copy';}});
 const art=document.querySelector('.hero-art'),scene=document.querySelector('.glass-scene');if(matchMedia('(hover:hover) and (prefers-reduced-motion:no-preference)').matches){art.addEventListener('pointermove',e=>{const r=art.getBoundingClientRect(),x=(e.clientX-r.left)/r.width-.5,y=(e.clientY-r.top)/r.height-.5;scene.style.transform=`rotateY(${-12+x*10}deg) rotateX(${8-y*8}deg) rotateZ(-5deg)`});art.addEventListener('pointerleave',()=>scene.style.transform='')}
 
-// Anonymous daily browser count. No IP, fingerprint or visitor identifier stored.
-fetch('/api/visit',{method:'POST',headers:{'X-Zapture-Visit':'1'},credentials:'same-origin',cache:'no-store'})
-.then(r=>{if(!r.ok)throw new Error('Counter unavailable');return r.json()})
-.then(data=>{if(Number.isSafeInteger(data.visits))$('visit-count').textContent=data.visits.toLocaleString()})
-.catch(()=>{$('visit-count').parentElement.textContent='Visit counter temporarily unavailable'});
+
+function updateEstimate(){const minutes=Number($('video-minutes').value),bitrate=Number($('video-bitrate').value),mb=bitrate*60*minutes/8;$('minutes-label').textContent=minutes+' minute'+(minutes===1?'':'s');$('size-result').textContent='≈ '+(mb>=1000?(mb/1000).toFixed(2)+' GB':Math.round(mb)+' MB')}
+$('video-bitrate').addEventListener('change',updateEstimate);$('video-minutes').addEventListener('input',updateEstimate);updateEstimate();

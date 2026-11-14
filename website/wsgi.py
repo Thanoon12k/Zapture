@@ -1,67 +1,69 @@
-"""Dependency-free, allowlisted static website for PythonAnywhere."""
+"""Zapture landing page with the owner's visitor-dashboard integration."""
 from pathlib import Path
+import os
+import secrets
 import mimetypes
-import sqlite3
-import json
-from datetime import datetime, timezone
-from http.cookies import SimpleCookie
+from flask import Flask, Response, redirect, request
+from visitor_dashboard.flask import VisitorDashboard
+
 ROOT = Path(__file__).resolve().parent
+DATA = ROOT.parent / 'zapture-data'
 ROUTES = {'/':'index.html','/privacy/':'privacy/index.html','/robots.txt':'robots.txt','/sitemap.xml':'sitemap.xml'}
-ASSETS = {'/assets/'+p.name: 'assets/'+p.name for p in (ROOT/'assets').iterdir() if p.is_file()}
-DATA_PATH = ROOT.parent / 'zapture-data' / 'visits.sqlite3'
-def visit_count(increment=False):
-    DATA_PATH.parent.mkdir(parents=True, exist_ok=True)
-    with sqlite3.connect(DATA_PATH, timeout=10) as db:
-        db.execute('CREATE TABLE IF NOT EXISTS totals (id INTEGER PRIMARY KEY CHECK(id=1), visits INTEGER NOT NULL)')
-        db.execute('INSERT OR IGNORE INTO totals VALUES (1, 0)')
-        if increment:
-            db.execute('UPDATE totals SET visits=visits+1 WHERE id=1')
-        return db.execute('SELECT visits FROM totals WHERE id=1').fetchone()[0]
+ASSETS = {'/assets/'+p.name:'assets/'+p.name for p in (ROOT/'assets').iterdir() if p.is_file()}
 
-def counter_response(environ, start_response, path):
-    method = environ.get('REQUEST_METHOD', 'GET')
-    is_visit = path == '/api/visit'
-    if (is_visit and method != 'POST') or (not is_visit and method not in ('GET', 'HEAD')):
-        start_response('405 Method Not Allowed', [('Allow', 'POST' if is_visit else 'GET, HEAD'), ('Content-Length', '0')]); return [b'']
-    # Only the landing page can increment; badge and stats requests are read-only.
-    if is_visit and (environ.get('HTTP_X_ZAPTURE_VISIT') != '1' or environ.get('HTTP_ORIGIN') != 'https://zapture.pythonanywhere.com'):
-        start_response('403 Forbidden', [('Content-Length', '0')]); return [b'']
-    today = datetime.now(timezone.utc).date().isoformat()
-    cookie = SimpleCookie()
-    try: cookie.load(environ.get('HTTP_COOKIE', ''))
-    except Exception: pass
-    seen = cookie.get('zapture_visit')
-    increment = is_visit and (seen is None or seen.value != today)
-    headers = [('Cache-Control', 'no-store'), ('X-Content-Type-Options', 'nosniff')]
-    try: count = visit_count(increment)
-    except sqlite3.Error:
-        start_response('503 Service Unavailable', [('Content-Length', '0'), ('Retry-After', '30')]); return [b'']
-    if is_visit:
-        headers.append(('Set-Cookie', 'zapture_visit=' + today + '; Max-Age=86400; Path=/; Secure; HttpOnly; SameSite=Lax'))
-    if path == '/visitor-badge.svg':
-        text = f'{count:,}'
-        width = max(64, len(text)*8+20)
-        body = (f'<svg xmlns="http://www.w3.org/2000/svg" width="{100+width}" height="24" role="img" aria-label="Website visits: {text}"><title>Website visits: {text}</title><rect width="{100+width}" height="24" rx="5" fill="#252923"/><path d="M100 0h{width-5}q5 0 5 5v14q0 5-5 5H100z" fill="#657b50"/><g fill="white" font-family="Verdana,Arial,sans-serif" font-size="11"><text x="50" y="16" text-anchor="middle">Website visits</text><text x="{100+width/2}" y="16" text-anchor="middle">{text}</text></g></svg>').encode()
-        headers.append(('Content-Type','image/svg+xml; charset=utf-8'))
+def dashboard_password(data_dir):
+    """An environment password or a private server-side file, never source control."""
+    configured = os.environ.get('VISITS_PASSWORD')
+    if configured:
+        return configured
+    path = data_dir / 'dashboard-password.txt'
+    try:
+        fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    except FileExistsError:
+        return path.read_text().strip()
     else:
-        body = json.dumps({'visits': count, 'metric': 'daily browser visits'}).encode()
-        headers.append(('Content-Type','application/json'))
-    headers.append(('Content-Length',str(len(body))))
-    start_response('200 OK',headers)
-    return [b'' if method == 'HEAD' else body]
+        password = secrets.token_urlsafe(24)
+        with os.fdopen(fd,'w') as f:
+            f.write(password+'\n')
+        return password
 
-def application(environ,start_response):
-    path=environ.get('PATH_INFO','/')
-    if path in ('/api/visit', '/api/stats', '/visitor-badge.svg'):
-        return counter_response(environ, start_response, path)
-    if environ.get('REQUEST_METHOD') not in ('GET','HEAD'):
-        start_response('405 Method Not Allowed',[('Allow','GET, HEAD'),('Content-Length','0')]);return [b'']
-    if path=='/privacy':
-        start_response('301 Moved Permanently',[('Location','/privacy/'),('Content-Length','0')]);return [b'']
-    relative=ROUTES.get(path) or ASSETS.get(path)
-    if relative is None:
-        body=b'<!doctype html><html lang="en"><title>Not found - Zapture</title><h1>Page not found</h1><a href="/">Back to Zapture</a></html>'
-        start_response('404 Not Found',[('Content-Type','text/html; charset=utf-8'),('Content-Length',str(len(body))),('X-Robots-Tag','noindex')]);return [b'' if environ['REQUEST_METHOD']=='HEAD' else body]
-    body=(ROOT/relative).read_bytes();mime=mimetypes.guess_type(relative)[0] or 'application/octet-stream'
-    headers=[('Content-Type',mime+('; charset=utf-8' if mime.startswith('text/') else '')),('Content-Length',str(len(body))),('Cache-Control','public, max-age=3600' if path.startswith('/assets/') else 'public, max-age=300'),('X-Content-Type-Options','nosniff'),('Referrer-Policy','strict-origin-when-cross-origin'),('X-Frame-Options','DENY'),('Permissions-Policy','camera=(), microphone=(), display-capture=()')]
-    start_response('200 OK',headers);return [b'' if environ['REQUEST_METHOD']=='HEAD' else body]
+def create_app(data_dir=None, password=None):
+    data_dir = Path(data_dir or DATA)
+    data_dir.mkdir(parents=True, exist_ok=True)
+    app = Flask(__name__, static_folder=None)
+    app.config.update(MAX_CONTENT_LENGTH=32768)
+    VisitorDashboard(app, password=password or dashboard_password(data_dir),
+                     db_path=data_dir/'visits.db', title='Zapture visitors',
+                     tz='Asia/Baghdad', lang='en', notify='off', keep_days=180,
+                     geo_online=False, geo_dir=data_dir/'geo', ignore=('/api','/assets'))
+
+    @app.get('/')
+    @app.get('/<path:unused>')
+    def page(unused=''):
+        if request.path == '/privacy':
+            return redirect('/privacy/', code=301)
+        relative = ROUTES.get(request.path) or ASSETS.get(request.path)
+        if relative is None:
+            return Response('<!doctype html><html lang="en"><title>Not found — Zapture</title><h1>Page not found</h1><a href="/">Back to Zapture</a></html>',status=404,mimetype='text/html')
+        mime = mimetypes.guess_type(relative)[0] or 'application/octet-stream'
+        return Response((ROOT/relative).read_bytes(), content_type=mime + ('; charset=utf-8' if mime.startswith('text/') else ''))
+
+    @app.after_request
+    def headers(response):
+        response.headers['X-Content-Type-Options']='nosniff'
+        response.headers['Referrer-Policy']='strict-origin-when-cross-origin'
+        response.headers['X-Frame-Options']='DENY'
+        response.headers['Permissions-Policy']='camera=(), microphone=(), display-capture=()'
+        if request.path.startswith('/visits'):
+            response.headers['X-Robots-Tag']='noindex, nofollow'
+        if 'text/html' in response.content_type or request.path.startswith('/visits/api'):
+            # The injected visit key and cookies must never be shared by a cache.
+            response.headers['Cache-Control']='private, no-store'
+        elif request.path.startswith('/assets/'):
+            response.headers['Cache-Control']='public, max-age=3600'
+        if response.status_code == 404:
+            response.headers['X-Robots-Tag']='noindex'
+        return response
+    return app
+
+application = create_app()

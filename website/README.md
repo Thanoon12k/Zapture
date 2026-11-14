@@ -1,23 +1,45 @@
-# Zapture landing website
+# Zapture website
 
-Public site: https://zapture.pythonanywhere.com/
+Public: https://zapture.pythonanywhere.com/
+Private visitor dashboard: https://zapture.pythonanywhere.com/visits
 
-Buildless HTML, CSS, JavaScript, and a standard-library WSGI server. No third-party application dependencies, credentials, or advertising analytics. A first-party counter stores an aggregate count in SQLite outside the public directory. The recorder demo is a simulation and cannot capture a visitor's screen. CSS artwork scales to high-resolution displays and respects reduced motion.
+Responsive HTML/CSS/JavaScript with a Flask server and [visitor-dashboard](https://github.com/Thanoon12k/visitor-dashboard), the owner's analytics project. The recorder demo is a simulation. No screen/microphone capture is requested by the website.
 
-Run locally from the repository root:
+## Run locally
 
 ```sh
-python -c "from wsgiref.simple_server import make_server; from website.wsgi import application; make_server('127.0.0.1',8080,application).serve_forever()"
+pip install -r website/requirements.txt
+flask --app website.wsgi:application run
 ```
 
-Deploy files to `/home/Zapture/zapture-site/`; the PythonAnywhere WSGI configuration adds that directory to sys.path and imports `application` from `wsgi`. Set force HTTPS and reload. Never commit API tokens.
+Set `VISITS_PASSWORD` in the environment. If absent, a strong random password is generated once in `zapture-data/dashboard-password.txt`, outside all public routes. The file is created with owner-only permissions. Do not commit passwords or the database.
 
-SEO: server-rendered content, canonical URLs, SoftwareApplication structured data, Open Graph/Twitter social image, robots.txt, XML sitemap, semantic sections and descriptive text. Submit the sitemap in Google Search Console/Bing Webmaster Tools after verifying ownership; indexing and rankings are not guaranteed. If moving to a custom domain, update all canonical, social, structured data, robots and sitemap URLs together.
+## PythonAnywhere
 
-Update release links, version labels, ZIP size and platform support when publishing a new desktop release. Settings features are Windows-specific. Linux/macOS remain experimental; no mobile or Wayland support is claimed.
+Upload this directory to `/home/Zapture/zapture-site/`. Install requirements or provide a trusted `dependencies.zip` containing the pinned Python 3.10 dependency tree. Use `pythonanywhere_wsgi.py` as `/var/www/zapture_pythonanywhere_com_wsgi.py`, enable forced HTTPS, and reload. The deployment bundle is extracted into a content-versioned directory outside public routes. Refresh the bundle when requirements change.
 
-## Visitor counter
+The dashboard password is in `/home/Zapture/zapture-data/dashboard-password.txt`, viewable only through the authenticated PythonAnywhere Files interface. Alternatively set `VISITS_PASSWORD` and reload. Never display this file in public routes or logs.
 
-`POST /api/visit` increments once per UTC day per browser using a date-only HttpOnly, Secure, SameSite cookie. It requires the site Origin and an X-Zapture-Visit header. No CORS permissions are granted. `GET /api/stats` and `/visitor-badge.svg` only read the aggregate. GitHub proxies/caches badges, so its displayed count may lag. Counts are approximate and not bot-proof; they are not unique-person or GitHub-profile metrics.
+Persistent analytics: `/home/Zapture/zapture-data/visits.db`. Keep this file across deployments. The earlier temporary simple counter database is not used and has not been deleted.
 
-Persistent SQLite file: `/home/Zapture/zapture-data/visits.sqlite3`. Keep this file when redeploying. No IP, identifier, or fingerprint is stored by our application; hosting logs are managed separately by PythonAnywhere.
+## Analytics configuration
+
+- English dashboard at `/visits`, Arabic available through its language switch.
+- Baghdad time, 180-day retention, password-protected stats and CSV export.
+- First-party returning-visitor cookie, devices, referrers, duration, scroll and click tracking.
+- Local DB-IP country and ASN databases. Approximate countries/providers; city-level data is not configured. Online IP lookups and Telegram notifications are disabled.
+- DB-IP Lite data: https://db-ip.com/ (CC BY 4.0). Current deployment uses November 2026. Update the compressed country/ASN files periodically, then reload to replace the local databases.
+- HTML uses `private, no-store` to avoid caching per-visit tokens. Dashboard endpoints are noindex and excluded from the sitemap. Static files and dashboard requests are not tracked.
+- Log in with “Don't count my visits from this device” enabled to exclude your browser.
+
+The former public counter and README badge were removed because the requested integration is the private visitor-dashboard.
+
+## SEO and maintenance
+
+Server-rendered content, canonical URLs, SoftwareApplication structured data, social preview image, robots.txt, sitemap.xml, and semantic headings. Submit the sitemap to Google Search Console and Bing Webmaster Tools after verifying ownership; rankings and indexing are not guaranteed. Update canonical/social/sitemap URLs together when moving to a custom domain.
+
+The free PythonAnywhere app initially expires December 14, 2026; extend it from the Web tab before expiry. Update release URLs, version labels, size, and platform notes when publishing a new desktop release. Windows is primary; Linux/macOS remain experimental.
+
+## Checks
+
+`python -m unittest website.test_dashboard`

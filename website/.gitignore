@@ -1,2 +1,7 @@
 __pycache__/
 *.pyc
+dependencies.zip
+*.mmdb
+*.mmdb.gz
+*.db
+.env

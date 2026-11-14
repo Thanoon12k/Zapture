@@ -1,0 +1,4 @@
+Flask==3.1.3
+requests==2.34.2
+maxminddb==2.8.2
+visitor-dashboard[flask] @ git+https://github.com/Thanoon12k/visitor-dashboard@4496f9a6fe1b3d2120c13ba60c4160db1b4618a2

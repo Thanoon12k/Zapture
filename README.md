@@ -1,10 +1,6 @@
 # Zapture
 
-[![Website visits](https://zapture.pythonanywhere.com/visitor-badge.svg)](https://zapture.pythonanywhere.com/)
-
 **[Visit the Zapture website](https://zapture.pythonanywhere.com/)** · [Website source and deployment](website/README.md)
-
-*Badge shows approximate daily browser visits to the website, not GitHub repository views. GitHub may cache the displayed total.*
 
 Simple, local screen capture. **Record. Stop. Screenshot.** English UI, no account, no subscription, no advertising, no uploads.
 

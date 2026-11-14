@@ -1,3 +1,4 @@
 User-agent: *
 Allow: /
+Disallow: /visits
 Sitemap: https://zapture.pythonanywhere.com/sitemap.xml
