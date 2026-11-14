@@ -3,3 +3,5 @@
 
 .arrow-icon{width:12px;height:12px;display:inline-block;vertical-align:middle;flex-shrink:0}.floating-star{font-family:Georgia,serif}.feature p,.faq details p,.agents>div>p:not(.kicker){color:#626b5b}
 @media(max-width:700px){.hero h1{font-size:clamp(46px,12.8vw,65px);letter-spacing:-2.8px}.hero-art{overflow:hidden;padding:10px 0}.hero>* ,.agents>*,.play-section>*,.faq>*{min-width:0}.bottom-label{bottom:1px}.code-panel pre{max-width:100%}}
+
+.visit-counter{font-size:11px;color:#657b50}.visit-counter b{font-weight:700}footer>div{flex-wrap:wrap}

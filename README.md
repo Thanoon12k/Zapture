@@ -1,5 +1,11 @@
 # Zapture
 
+[![Website visits](https://zapture.pythonanywhere.com/visitor-badge.svg)](https://zapture.pythonanywhere.com/)
+
+**[Visit the Zapture website](https://zapture.pythonanywhere.com/)** · [Website source and deployment](website/README.md)
+
+*Badge shows approximate daily browser visits to the website, not GitHub repository views. GitHub may cache the displayed total.*
+
 Simple, local screen capture. **Record. Stop. Screenshot.** English UI, no account, no subscription, no advertising, no uploads.
 
 **0.1.0-alpha.2 preview — not yet a finished all-platform release.** Windows has a native Rust/Win32 implementation. Linux/X11 and macOS have experimental Rust desktop adapters requiring FFmpeg. Wayland, Android and iOS capture are not implemented. The first Windows preview was reported working by a user. New settings/dot behavior still needs real-device validation; CPU/RAM benchmarks and macOS capture validation are pending.
