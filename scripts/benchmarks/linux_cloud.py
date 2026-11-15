@@ -136,60 +136,64 @@ def validate(path):
  result['motion_detected']=len(set(frames))>1;result['path']=str(p);result['bytes']=p.stat().st_size
  if not result['motion_detected']:raise RuntimeError('No changing visual content in sampled frames')
  return result
-x=None;scene=None;app=None;results=[]
-try:
- x=subprocess.Popen([str(root/'root/usr/bin/Xvfb'),':98','-screen','0','1280x720x24','-nolisten','unix','-nolisten','local','-listen','tcp','-ac'],stdout=log('xvfb.log'),stderr=subprocess.STDOUT);time.sleep(2)
- scene=subprocess.Popen(['python3',str(workload)],env=env,stdout=log('workload.log'),stderr=subprocess.STDOUT);time.sleep(2)
- hardware={'platform':os.uname()._asdict() if hasattr(os.uname(),'_asdict') else str(os.uname()),'logical_cpus':psutil.cpu_count(),'memory_bytes':psutil.virtual_memory().total,'cpuinfo':pathlib.Path('/proc/cpuinfo').read_text()[:1500],'renderer':'Mesa llvmpipe; no GPU device','resolution':[1280,720],'fps':30,'encoder':'x264 ultrafast CRF23','audio':'off (OBS may mux silent AAC track)','seconds':a.seconds,'runs':a.runs,'versions':{'zapture':'0.1.0-alpha.2','obs':'30.2.3 Debian package'},'notes':['Cloud container, virtual X11, software OpenGL; not physical Linux or Windows benchmarks','Resource samples include child processes, especially Zapture FFmpeg','Startup latency uses different API readiness criteria; not a direct launch-speed comparison','OBS preview disabled; Zapture floating controls may appear in capture','CPU percentage: 100% = one logical core; RSS sum may double-count shared pages']}
- (out/'environment.json').write_text(json.dumps(hardware,indent=2))
- for trial in range(1,a.runs+1):
-  for name in (['Zapture','OBS'] if trial%2 else ['OBS','Zapture']):
-   if name not in a.apps.split(','):continue
-   row={'app':name,'trial':trial};print('START',name,trial,flush=True)
-   try:
-    begin=time.monotonic()
-    if name=='Zapture':
-     app=subprocess.Popen([str(next((root/'apps').rglob('zapture'))),'--mcp'],env=env,stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=log(f'zapture-{trial}.log'),text=True)
-     control=MCP(app);control.call('initialize',{'protocolVersion':'2025-06-18','capabilities':{},'clientInfo':{'name':'benchmark','version':'1'}})
-     control.tool('zapture_status')
-    else:
-     app=subprocess.Popen([str(root/'root/usr/bin/obs'),'--disable-updater','--disable-missing-files-check','--profile','Benchmark','--collection','Benchmark'],env=env,stdout=log(f'obs-{trial}.log'),stderr=subprocess.STDOUT,cwd=root/'root/usr/bin')
-     control=OBS();row['obs_version']=control.call('GetVersion')
-     try:control.call('CreateScene',{'sceneName':'Benchmark'})
-     except RuntimeError:pass
-     inputs=control.call('GetInputList')['inputs']
-     if not any(i['inputName']=='Screen' for i in inputs):control.call('CreateInput',{'sceneName':'Benchmark','inputName':'Screen','inputKind':'xshm_input','inputSettings':{'screen':0,'show_cursor':False},'sceneItemEnabled':True})
-     if not any(i['inputName']=='Silent timing source' for i in inputs):control.call('CreateInput',{'sceneName':'Benchmark','inputName':'Silent timing source','inputKind':'ffmpeg_source','inputSettings':{'is_local_file':True,'local_file':str(silence),'looping':True},'sceneItemEnabled':True})
-     control.call('SetCurrentProgramScene',{'sceneName':'Benchmark'})
-    row['api_ready_seconds']=time.monotonic()-begin;time.sleep(5)
-    row['idle']=sample(app,10)
-    if name=='Zapture':row['start_response']=control.tool('zapture_start_recording')
-    else:control.call('StartRecord')
-    time.sleep(2)
-    if name=='Zapture':
-     st=control.tool('zapture_status')
-     if st.get('state')!='recording':raise RuntimeError('Capture did not remain active: '+str(st))
-    row['recording']=sample(app,a.seconds)
-    finish=time.monotonic()
-    if name=='Zapture':
-     control.tool('zapture_stop_recording')
-     for _ in range(60):
+def run_benchmark():
+ x=None;scene=None;app=None;results=[]
+ try:
+  x=subprocess.Popen([str(root/'root/usr/bin/Xvfb'),':98','-screen','0','1280x720x24','-nolisten','unix','-nolisten','local','-listen','tcp','-ac'],stdout=log('xvfb.log'),stderr=subprocess.STDOUT);time.sleep(2)
+  scene=subprocess.Popen(['python3',str(workload)],env=env,stdout=log('workload.log'),stderr=subprocess.STDOUT);time.sleep(2)
+  hardware={'platform':os.uname()._asdict() if hasattr(os.uname(),'_asdict') else str(os.uname()),'logical_cpus':psutil.cpu_count(),'memory_bytes':psutil.virtual_memory().total,'cpuinfo':pathlib.Path('/proc/cpuinfo').read_text()[:1500],'renderer':'Mesa llvmpipe; no GPU device','resolution':[1280,720],'fps':30,'encoder':'x264 ultrafast CRF23','audio':'off (OBS may mux silent AAC track)','seconds':a.seconds,'runs':a.runs,'versions':{'zapture':'0.1.0-alpha.2','obs':'30.2.3 Debian package'},'notes':['Cloud container, virtual X11, software OpenGL; not physical Linux or Windows benchmarks','Resource samples include child processes, especially Zapture FFmpeg','Startup latency uses different API readiness criteria; not a direct launch-speed comparison','OBS preview disabled; Zapture floating controls may appear in capture','CPU percentage: 100% = one logical core; RSS sum may double-count shared pages']}
+  (out/'environment.json').write_text(json.dumps(hardware,indent=2))
+  for trial in range(1,a.runs+1):
+   for name in (['Zapture','OBS'] if trial%2 else ['OBS','Zapture']):
+    if name not in a.apps.split(','):continue
+    row={'app':name,'trial':trial};print('START',name,trial,flush=True)
+    try:
+     begin=time.monotonic()
+     if name=='Zapture':
+      app=subprocess.Popen([str(next((root/'apps').rglob('zapture'))),'--mcp'],env=env,stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=log(f'zapture-{trial}.log'),text=True)
+      control=MCP(app);control.call('initialize',{'protocolVersion':'2025-06-18','capabilities':{},'clientInfo':{'name':'benchmark','version':'1'}})
+      control.tool('zapture_status')
+     else:
+      app=subprocess.Popen([str(root/'root/usr/bin/obs'),'--disable-updater','--disable-missing-files-check','--profile','Benchmark','--collection','Benchmark'],env=env,stdout=log(f'obs-{trial}.log'),stderr=subprocess.STDOUT,cwd=root/'root/usr/bin')
+      control=OBS();row['obs_version']=control.call('GetVersion')
+      try:control.call('CreateScene',{'sceneName':'Benchmark'})
+      except RuntimeError:pass
+      inputs=control.call('GetInputList')['inputs']
+      if not any(i['inputName']=='Screen' for i in inputs):control.call('CreateInput',{'sceneName':'Benchmark','inputName':'Screen','inputKind':'xshm_input','inputSettings':{'screen':0,'show_cursor':False},'sceneItemEnabled':True})
+      if not any(i['inputName']=='Silent timing source' for i in inputs):control.call('CreateInput',{'sceneName':'Benchmark','inputName':'Silent timing source','inputKind':'ffmpeg_source','inputSettings':{'is_local_file':True,'local_file':str(silence),'looping':True},'sceneItemEnabled':True})
+      control.call('SetCurrentProgramScene',{'sceneName':'Benchmark'})
+     row['api_ready_seconds']=time.monotonic()-begin;time.sleep(5)
+     row['idle']=sample(app,10)
+     if name=='Zapture':row['start_response']=control.tool('zapture_start_recording')
+     else:control.call('StartRecord')
+     time.sleep(2)
+     if name=='Zapture':
       st=control.tool('zapture_status')
-      if st.get('state')=='idle':break
-      time.sleep(.2)
-     if st.get('state')!='idle' or not st.get('message','').startswith('Saved:'):raise RuntimeError('Finalization failed: '+str(st))
-     path=st['recording_path']
-    else:
-     row['obs_stats']=control.call('GetStats');path=control.call('StopRecord')['outputPath']
-     deadline=time.monotonic()+30
-     while time.monotonic()<deadline:
-      if not control.call('GetRecordStatus')['outputActive'] and pathlib.Path(path).exists():break
-      time.sleep(.25)
-    row['finalize_seconds']=time.monotonic()-finish;row['output']=validate(path);row['status']='ok'
-   except Exception as e:row['status']='failed';row['error']=str(e);print('FAIL',name,str(e),flush=True)
-   finally:
-    if name=='OBS' and 'control' in locals() and hasattr(control,'w'):control.w.close()
-    stop(app);app=None
-   results.append(row);(out/'raw-results.json').write_text(json.dumps(results,indent=2));print('DONE',name,trial,row['status'],flush=True);time.sleep(2)
-finally:
- stop(app);stop(scene);stop(x)
+      if st.get('state')!='recording':raise RuntimeError('Capture did not remain active: '+str(st))
+     row['recording']=sample(app,a.seconds)
+     finish=time.monotonic()
+     if name=='Zapture':
+      control.tool('zapture_stop_recording')
+      for _ in range(60):
+       st=control.tool('zapture_status')
+       if st.get('state')=='idle':break
+       time.sleep(.2)
+      if st.get('state')!='idle' or not st.get('message','').startswith('Saved:'):raise RuntimeError('Finalization failed: '+str(st))
+      path=st['recording_path']
+     else:
+      row['obs_stats']=control.call('GetStats');path=control.call('StopRecord')['outputPath']
+      deadline=time.monotonic()+30
+      while time.monotonic()<deadline:
+       if not control.call('GetRecordStatus')['outputActive'] and pathlib.Path(path).exists():break
+       time.sleep(.25)
+     row['finalize_seconds']=time.monotonic()-finish;row['output']=validate(path);row['status']='ok'
+    except Exception as e:row['status']='failed';row['error']=str(e);print('FAIL',name,str(e),flush=True)
+    finally:
+     if name=='OBS' and 'control' in locals() and hasattr(control,'w'):control.w.close()
+     stop(app);app=None
+    results.append(row);(out/'raw-results.json').write_text(json.dumps(results,indent=2));print('DONE',name,trial,row['status'],flush=True);time.sleep(2)
+ finally:
+  stop(app);stop(scene);stop(x)
+
+if __name__ == "__main__":
+ run_benchmark()
