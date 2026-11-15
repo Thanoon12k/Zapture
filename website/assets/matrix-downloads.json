@@ -1,0 +1,46 @@
+{
+  "checked": "2026-11-15",
+  "method": "GitHub release asset size metadata; Windows portable ZIPs; packages have different features and dependencies",
+  "packages": [
+    {
+      "app": "Zapture",
+      "version": "v0.1.0-alpha.2",
+      "asset": "Zapture-v0.1.0-alpha.2-Windows-x64.zip",
+      "bytes": 758272,
+      "mb": 0.758272,
+      "source": "https://github.com/Thanoon12k/Zapture/releases/tag/v0.1.0-alpha.2",
+      "download": "https://github.com/Thanoon12k/Zapture/releases/download/v0.1.0-alpha.2/Zapture-v0.1.0-alpha.2-Windows-x64.zip",
+      "zapture_smaller_pct": 0.0
+    },
+    {
+      "app": "ShareX",
+      "version": "v22.4.0",
+      "asset": "ShareX-22.4.0-portable-x64.zip",
+      "bytes": 209735803,
+      "mb": 209.735803,
+      "source": "https://github.com/ShareX/ShareX/releases/tag/v22.4.0",
+      "download": "https://github.com/ShareX/ShareX/releases/download/v22.4.0/ShareX-22.4.0-portable-x64.zip",
+      "zapture_smaller_pct": 99.63846325274278
+    },
+    {
+      "app": "obs-studio",
+      "version": "33.0.1",
+      "asset": "OBS-Studio-33.0.1-Windows-x64.zip",
+      "bytes": 223786669,
+      "mb": 223.786669,
+      "source": "https://github.com/obsproject/obs-studio/releases/tag/33.0.1",
+      "download": "https://github.com/obsproject/obs-studio/releases/download/33.0.1/OBS-Studio-33.0.1-Windows-x64.zip",
+      "zapture_smaller_pct": 99.66116301592567
+    },
+    {
+      "app": "greenshot",
+      "version": "v1.3.328",
+      "asset": "Greenshot-PORTABLE-1.3.328-RELEASE.zip",
+      "bytes": 4030256,
+      "mb": 4.030256,
+      "source": "https://github.com/greenshot/greenshot/releases/tag/v1.3.328",
+      "download": "https://github.com/greenshot/greenshot/releases/download/v1.3.328/Greenshot-PORTABLE-1.3.328-RELEASE.zip",
+      "zapture_smaller_pct": 81.18551278132207
+    }
+  ]
+}

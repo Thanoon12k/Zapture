@@ -8,7 +8,7 @@ from visitor_dashboard.flask import VisitorDashboard
 
 ROOT = Path(__file__).resolve().parent
 DATA = ROOT.parent / 'zapture-data'
-ROUTES = {'/':'index.html','/privacy/':'privacy/index.html','/robots.txt':'robots.txt','/sitemap.xml':'sitemap.xml'}
+ROUTES = {'/':'index.html','/benchmarks/':'benchmarks/index.html','/privacy/':'privacy/index.html','/robots.txt':'robots.txt','/sitemap.xml':'sitemap.xml'}
 ASSETS = {'/assets/'+p.name:'assets/'+p.name for p in (ROOT/'assets').iterdir() if p.is_file()}
 
 def dashboard_password(data_dir):
@@ -40,6 +40,8 @@ def create_app(data_dir=None, password=None):
     @app.get('/')
     @app.get('/<path:unused>')
     def page(unused=''):
+        if request.path == '/benchmarks':
+            return redirect('/benchmarks/', code=301)
         if request.path == '/privacy':
             return redirect('/privacy/', code=301)
         relative = ROUTES.get(request.path) or ASSETS.get(request.path)

@@ -1,0 +1,11 @@
+{
+  "zapture": "0.1.0-alpha.2 published Linux x64",
+  "ffmpeg": "ffmpeg version 7.1.5-0+deb13u1 Copyright (c) 2000-2026 the FFmpeg developers",
+  "imagemagick": "Version: ImageMagick 7.1.1-43 Q16 x86_64 22550 https://imagemagick.org",
+  "scrot": "scrot version 1.12.1",
+  "seed": 241115,
+  "repeats": 3,
+  "recording_sample_seconds": 8,
+  "recording_warmup_seconds": 2,
+  "note": "Same software-only cloud environment as earlier benchmark; synthetic content; 30fps; no audio"
+}

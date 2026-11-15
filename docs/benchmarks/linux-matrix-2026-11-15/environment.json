@@ -1,0 +1,23 @@
+{
+  "system": "Linux-6.18.57-x86_64-with-glibc2.41",
+  "logical_cpus": 9,
+  "meminfo": [
+    "MemTotal:       10206472 kB",
+    "MemFree:         8873104 kB",
+    "MemAvailable:    9088648 kB"
+  ],
+  "has_gpu_device": false,
+  "zapture_sha256": "0924f48a361dfb7f2a139420a8dec3ea9239acb89aa706878043bd5d29a03f95",
+  "extra_packages": [
+    {
+      "file": "scrot_1.12.1-1_amd64.deb",
+      "sha256": "e0c3d6a8071200f7b3273bbb67bfaa2fc496eccf4343f89bd0a927abe2fb9ee7"
+    },
+    {
+      "file": "libimlib2t64_1.12.4-2_amd64.deb",
+      "sha256": "0abd807eb797a05bbcaa52f30b31f95c348859a110f5f680d7370661158267a4"
+    }
+  ],
+  "capture": "Xvfb TCP X11; synthetic screen",
+  "ordering": "fixed resolution/workload groups; seeded shuffle of tool/trial within each group"
+}
